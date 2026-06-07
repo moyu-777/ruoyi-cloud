@@ -8,7 +8,7 @@ pipeline {
                     url: 'git@github.com:moyu-777/ruoyi-cloud.git'
             }
         }
-        stage('测试123') {
+        stage('测试123545') {
             steps {
                 sh 'ls -la'
             }
