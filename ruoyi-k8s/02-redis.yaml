@@ -1,10 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ruoyi-redis-conf
+  namespace: ruoyi-cloud
+data:
+  redis.conf: |
+    # requirepass 123456
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ruoyi-redis-data
+  namespace: ruoyi-cloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: nfs-client  # 按需启用
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ruoyi-redis
-  namespace: ruoyi
-  labels:
-    app: ruoyi-redis
+  namespace: ruoyi-cloud
 spec:
   replicas: 1
   selector:
@@ -17,10 +39,8 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:7
-          command:
-            - redis-server
-            - /home/ruoyi/redis/redis.conf
+          image: redis:latest
+          command: ["redis-server", "/home/ruoyi/redis/redis.conf"]
           ports:
             - containerPort: 6379
           volumeMounts:
@@ -37,38 +57,30 @@ spec:
               cpu: "200m"
           readinessProbe:
             exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 15
-            periodSeconds: 20
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
       volumes:
         - name: redis-conf
           configMap:
-            name: redis-config
+            name: ruoyi-redis-conf
+            items:
+              - key: redis.conf
+                path: redis.conf
         - name: redis-data
           persistentVolumeClaim:
-            claimName: redis-data-pvc
+            claimName: ruoyi-redis-data
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: ruoyi-redis
-  namespace: ruoyi
-  labels:
-    app: ruoyi-redis
+  namespace: ruoyi-cloud
 spec:
-  type: ClusterIP
   selector:
     app: ruoyi-redis
   ports:
     - port: 6379
       targetPort: 6379
-      protocol: TCP
+  type: ClusterIP

@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ruoyi-mysql-data
+  namespace: ruoyi-cloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: nfs-client  # 按需启用
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ruoyi-mysql
+  namespace: ruoyi-cloud
+spec:
+  serviceName: ruoyi-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ruoyi-mysql
+  template:
+    metadata:
+      labels:
+        app: ruoyi-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          ports:
+            - containerPort: 3306
+          args:
+            - mysqld
+            - --innodb-buffer-pool-size=80M
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            - --default-time-zone=+8:00
+            - --lower-case-table-names=1
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ruoyi-mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: ruoyi-mysql-secret
+                  key: MYSQL_DATABASE
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: ruoyi-mysql-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ruoyi-mysql
+  namespace: ruoyi-cloud
+spec:
+  selector:
+    app: ruoyi-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  # ClusterIP: 仅集群内访问，其他服务通过 ruoyi-mysql:3306 连接
+  type: ClusterIP
