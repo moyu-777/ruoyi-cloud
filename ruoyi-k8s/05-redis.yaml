@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ruoyi-redis
+  namespace: ruoyi
+  labels:
+    app: ruoyi-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ruoyi-redis
+  template:
+    metadata:
+      labels:
+        app: ruoyi-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          command:
+            - redis-server
+            - /home/ruoyi/redis/redis.conf
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-conf
+              mountPath: /home/ruoyi/redis
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: redis-conf
+          configMap:
+            name: redis-config
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ruoyi-redis
+  namespace: ruoyi
+  labels:
+    app: ruoyi-redis
+spec:
+  type: ClusterIP
+  selector:
+    app: ruoyi-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP

@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────
+# MySQL PVC
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data-pvc
+  namespace: ruoyi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  # 如使用 NFS StorageClass，取消注释并填写 storageClassName
+  # storageClassName: nfs-client
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-logs-pvc
+  namespace: ruoyi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: nfs-client
+---
+# ─────────────────────────────────────────────
+# Redis PVC
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc
+  namespace: ruoyi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: nfs-client
+---
+# ─────────────────────────────────────────────
+# Nacos logs PVC
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nacos-logs-pvc
+  namespace: ruoyi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: nfs-client
+---
+# ─────────────────────────────────────────────
+# Nginx static dist PVC
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-dist-pvc
+  namespace: ruoyi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+  # storageClassName: nfs-client

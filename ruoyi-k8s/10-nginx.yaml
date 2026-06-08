@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ruoyi-nginx
+  namespace: ruoyi
+  labels:
+    app: ruoyi-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ruoyi-nginx
+  template:
+    metadata:
+      labels:
+        app: ruoyi-nginx
+    spec:
+      initContainers:
+        - name: wait-for-gateway
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z ruoyi-gateway 8080; do
+                echo "Waiting for Gateway..."
+                sleep 5
+              done
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-dist
+              mountPath: /home/ruoyi/projects/ruoyi-ui
+            - name: nginx-main-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: nginx-vhost-conf
+              mountPath: /etc/nginx/conf.d/ruoyi.conf
+              subPath: ruoyi.conf
+            - name: nginx-logs
+              mountPath: /var/log/nginx
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: nginx-dist
+          persistentVolumeClaim:
+            claimName: nginx-dist-pvc
+        - name: nginx-main-conf
+          configMap:
+            name: nginx-main-config
+        - name: nginx-vhost-conf
+          configMap:
+            name: nginx-vhost-config
+        - name: nginx-logs
+          emptyDir: {}
+---
+# ─────────────────────────────────────────────
+# NodePort Service（直接暴露 80）
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: ruoyi-nginx
+  namespace: ruoyi
+  labels:
+    app: ruoyi-nginx
+spec:
+  type: NodePort
+  selector:
+    app: ruoyi-nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
+---
+# ─────────────────────────────────────────────
+# Ingress（可选，需集群有 Ingress Controller）
+# ─────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ruoyi-ingress
+  namespace: ruoyi
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  # ingressClassName: nginx   # 取消注释以指定 IngressClass
+  rules:
+    - host: ruoyi.example.com   # ⚠️ 替换为你的域名
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ruoyi-nginx
+                port:
+                  number: 80

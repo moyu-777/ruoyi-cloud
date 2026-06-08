@@ -55,11 +55,14 @@ pipeline {
 
                         dir('docker') {
                             for (service in services) {
-                                def imageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:${TAG}"
-                                sh """
-                                    docker build -t ${imageName} -f ${service.dockerfile}/Dockerfile ${service.context}
-                                    docker push ${imageName}
-                                    echo "✅ 已推送镜像: ${imageName}"
+		            def imageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:${TAG}"
+			    def latestImageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:latest"
+                            sh """
+                            docker build -t ${imageName} -f ${service.dockerfile}/Dockerfile ${service.context}
+                            docker tag ${imageName} ${latestImageName}
+                            docker push ${imageName}
+                            docker push ${latestImageName}
+                            echo "✅ 已推送镜像: ${imageName} 和 ${latestImageName}"
                                 """
                             }
                         }
