@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // ----- 请修改为你的 Harbor 信息 -----
-        HARBOR_URL = '192.168.255.140:80'               // Harbor 域名或 IP
+        HARBOR_URL = 'http://192.168.255.140:80'               // Harbor 域名或 IP
         HARBOR_PROJECT = 'ruoyi-cloud'                   // Harbor 项目名
         DOCKER_CREDENTIALS_ID = 'harbor-auth' // Jenkins 中存储的用户名/密码凭据 ID
         // 镜像标签：使用 Jenkins 构建号，可改为 git commit id 等
