@@ -1,17 +1,78 @@
 pipeline {
     agent any
+
+    environment {
+        // ----- 请修改为你的 Harbor 信息 -----
+        HARBOR_URL = '192.168.255.140:80'               // Harbor 域名或 IP
+        HARBOR_PROJECT = 'ruoyi-cloud'                   // Harbor 项目名
+        DOCKER_CREDENTIALS_ID = 'harbor-auth' // Jenkins 中存储的用户名/密码凭据 ID
+        // 镜像标签：使用 Jenkins 构建号，可改为 git commit id 等
+        TAG = "${BUILD_NUMBER}"
+    }
+
     stages {
-        stage('拉取代码') {
+        stage('Maven 构建') {
             steps {
-                git branch: 'master',
-                    credentialsId: 'github-ssh',
-                    url: 'git@github.com:moyu-777/ruoyi-cloud.git'
+                sh 'mvn clean package -DskipTests'
             }
         }
-        stage('测试123545') {
+
+        stage('复制产物到 Docker 目录') {
             steps {
-                sh 'ls -la'
+                dir('docker') {
+                    sh '''
+                        chmod +x copy.sh
+                        ./copy.sh
+                        echo "复制完成，校验关键文件："
+                        ls -l ruoyi/gateway/jar/*.jar
+                        ls -l ruoyi/auth/jar/*.jar
+                        ls -l ruoyi/visual/monitor/jar/*.jar
+                        ls -l ruoyi/modules/system/jar/*.jar
+                        ls -l nginx/html/dist/
+                    '''
+                }
             }
+        }
+
+        stage('构建并推送镜像到 Harbor') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                    usernameVariable: 'HARBOR_USER',
+                    passwordVariable: 'HARBOR_PASS'
+                )]) {
+                    script {
+                        // 登录 Harbor
+                        sh "docker login ${HARBOR_URL} -u ${HARBOR_USER} -p ${HARBOR_PASS}"
+
+                        // 定义需要构建的服务列表及其 Dockerfile 路径（相对于 docker 目录）
+                        def services = [
+                            [name: 'ruoyi-gateway',         dockerfile: 'ruoyi/gateway',         context: 'ruoyi/gateway'],
+                            [name: 'ruoyi-auth',            dockerfile: 'ruoyi/auth',            context: 'ruoyi/auth'],
+                            [name: 'ruoyi-system',          dockerfile: 'ruoyi/modules/system',  context: 'ruoyi/modules/system'],
+                            [name: 'ruoyi-nginx',           dockerfile: 'nginx',                 context: 'nginx']
+                        ]
+
+                        dir('docker') {
+                            for (service in services) {
+                                def imageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:${TAG}"
+                                sh """
+                                    docker build -t ${imageName} -f ${service.dockerfile}/Dockerfile ${service.context}
+                                    docker push ${imageName}
+                                    echo "✅ 已推送镜像: ${imageName}"
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // 清理本地镜像，避免占用磁盘空间（可选）
+            sh "docker image prune -f"
         }
     }
 }
