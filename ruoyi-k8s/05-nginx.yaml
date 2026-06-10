@@ -1,42 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ruoyi-nginx-conf
-  namespace: ruoyi-cloud
-data:
-  nginx.conf: |
-    # 将原 ./nginx/conf/nginx.conf 内容粘贴到此处
-    # 注意：upstream proxy_pass 中的 ruoyi-gateway
-    # 在 K8s 内使用 Service DNS：http://ruoyi-gateway:8080
-    worker_processes  1;
-    events {
-        worker_connections  1024;
-    }
-    http {
-        include       mime.types;
-        default_type  application/octet-stream;
-        sendfile        on;
-        keepalive_timeout  65;
-        server {
-            listen       80;
-            server_name  localhost;
-            location / {
-                root   /home/ruoyi/projects/ruoyi-ui;
-                try_files $uri $uri/ /index.html;
-                index  index.html index.htm;
-            }
-            location /prod-api/ {
-                proxy_set_header Host $http_host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header REMOTE-HOST $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                # K8s 内通过 Service 名访问 Gateway
-                proxy_pass http://ruoyi-gateway:8080/;
-            }
-        }
-    }
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,15 +22,11 @@ spec:
             - until nc -z ruoyi-gateway 8080; do echo "waiting for gateway..."; sleep 3; done
       containers:
         - name: nginx
-          image: nginx:latest
+          # 使用项目自带 Dockerfile 构建的镜像（已包含 dist + nginx.conf）
+          image: 192.168.255.140:80/ruoyi/nginx:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
-          volumeMounts:
-            - name: nginx-conf
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
-            - name: nginx-ui
-              mountPath: /home/ruoyi/projects/ruoyi-ui
           resources:
             requests:
               memory: "64Mi"
@@ -77,14 +34,12 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
-      volumes:
-        - name: nginx-conf
-          configMap:
-            name: ruoyi-nginx-conf
-        # 前端静态文件：生产环境建议打包进 Nginx 镜像，或使用 InitContainer 从对象存储拉取
-        # 临时方案：使用 emptyDir 并由 InitContainer 填充，或挂载 NFS PVC
-        - name: nginx-ui
-          emptyDir: {}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
 
 ---
 # NodePort Service：集群外访问入口
@@ -103,8 +58,7 @@ spec:
   type: NodePort
 
 ---
-# （可选）Ingress：如果集群已安装 nginx-ingress-controller，
-# 用 Ingress 替代 NodePort 是更优雅的生产方案
+# （可选）Ingress：如果集群已安装 nginx-ingress-controller
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

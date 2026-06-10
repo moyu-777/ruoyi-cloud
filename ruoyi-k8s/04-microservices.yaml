@@ -26,7 +26,7 @@ spec:
       containers:
         - name: ruoyi-gateway
           # 替换为你实际推送到 Harbor 的镜像地址
-          image: your-harbor.example.com/ruoyi/gateway:latest
+          image: 192.168.255.140:80/ruoyi-cloud/ruoyi-gateway:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -102,7 +102,7 @@ spec:
             - until nc -z ruoyi-nacos 8848; do echo "waiting for nacos..."; sleep 3; done
       containers:
         - name: ruoyi-auth
-          image: your-harbor.example.com/ruoyi/auth:latest
+          image: 192.168.255.140:80/ruoyi-cloud/ruoyi-auth:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 9200
@@ -177,7 +177,7 @@ spec:
             - until nc -z ruoyi-mysql 3306; do echo "waiting for mysql..."; sleep 3; done
       containers:
         - name: ruoyi-modules-system
-          image: your-harbor.example.com/ruoyi/modules-system:latest
+          image: 192.168.255.140:80/ruoyi-cloud/ruoyi-system:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 9201
