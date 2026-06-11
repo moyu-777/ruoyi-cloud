@@ -21,7 +21,7 @@ pipeline {
         stage('Html 构建') {
             steps {
                 dir('ruoyi-ui') {
-                    sh 'npm run build:prod'
+                    sh 'npm install && npm run build:prod'
                 }
             }
         }
