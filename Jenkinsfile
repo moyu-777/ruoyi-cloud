@@ -18,13 +18,13 @@ pipeline {
         }
 
 
-        stage('Html 构建') {
-            steps {
-                dir('ruoyi-ui') {
-                    sh 'npm install && npm run build:prod'
-                }
-            }
-        }
+#        stage('Html 构建') {
+#            steps {
+#                dir('ruoyi-ui') {
+#                    sh 'npm run build:prod'
+#                }
+#            }
+#        }
 
         stage('复制产物到 Docker 目录') {
             steps {
