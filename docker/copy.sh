@@ -14,7 +14,7 @@ usage() {
 
 # copy html
 echo "begin copy html "
-cp -r ../ruoyi-ui/dist/** ./nginx/html/dist
+cp -r ../ruoyi-ui/dist/* ./nginx/html/dist
 
 
 # copy jar
