@@ -66,26 +66,27 @@ pipeline {
             }
         }
 
-        stage('重启k8s微服务') {
-            steps {
-                script {
-                    def services = [
-                        [name: 'ruoyi-gateway',  deployment: 'ruoyi-gateway'],
-                        [name: 'ruoyi-auth',     deployment: 'ruoyi-auth'],
-                        [name: 'ruoyi-system',   deployment: 'ruoyi-modules-system'],
-                        [name: 'ruoyi-nginx',    deployment: 'ruoyi-nginx']
-                    ]
-                    withKubeConfig([credentialsId: 'k8s-kubeconfig']) {
-                        for (service in services) {
-                            sh """
-                                kubectl rollout restart deployment/${service.deployment} -n ruoyi-cloud
-                                kubectl rollout status deployment/${service.deployment} -n ruoyi-cloud
-                            """
+            stage('重启k8s微服务') {
+                steps {
+                    script {
+                        def services = [
+                            'ruoyi-gateway',
+                            'ruoyi-auth',
+                            'ruoyi-modules-system',
+                            'ruoyi-nginx'
+                        ]
+                        sshagent(['k8s-master']) {
+                            for (service in services) {
+                                sh """
+                                    ssh -o StrictHostKeyChecking=no guyue@192.168.255.141 \
+                                    'kubectl rollout restart deployment/${service} -n ruoyi-cloud && \
+                                     kubectl rollout status deployment/${service} -n ruoyi-cloud'
+                                """
+                            }
                         }
                     }
                 }
             }
-        }
     }
 
     post {
