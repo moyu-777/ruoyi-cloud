@@ -75,7 +75,7 @@ pipeline {
                         [name: 'ruoyi-system',   deployment: 'ruoyi-modules-system'],
                         [name: 'ruoyi-nginx',    deployment: 'ruoyi-nginx']
                     ]
-                    withKubeConfig([credentialsId: 'k8s-kubeconfig']) {
+                    withKubeConfig([credentialsId: 'k8s-master']) {
                         for (service in services) {
                             sh """
                                 kubectl rollout restart deployment/${service.deployment} -n ruoyi-cloud
