@@ -2,21 +2,26 @@ pipeline {
     agent any
 
     environment {
-        // ----- 请修改为你的 Harbor 信息 -----
-        HARBOR_URL = '192.168.255.140:80'               // Harbor 域名或 IP
-        HARBOR_PROJECT = 'ruoyi-cloud'                   // Harbor 项目名
-        DOCKER_CREDENTIALS_ID = 'harbor-auth' // Jenkins 中存储的用户名/密码凭据 ID
-        // 镜像标签：使用 Jenkins 构建号，可改为 git commit id 等
+        HARBOR_URL = '192.168.255.140:80'
+        HARBOR_PROJECT = 'ruoyi-cloud'
+        DOCKER_CREDENTIALS_ID = 'harbor-auth'
         TAG = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Maven 构建') {
+        stage('Maven 构建Java项目') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
+        stage('前端项目 构建') {
+            steps {
+                dir('ruoyi-ui') {
+                    sh 'npm run build:prod'
+                }
+            }
+        }
 
         stage('复制产物到 Docker 目录') {
             steps {
@@ -29,7 +34,6 @@ pipeline {
                         ls -l ruoyi/auth/jar/*.jar
                         ls -l ruoyi/visual/monitor/jar/*.jar
                         ls -l ruoyi/modules/system/jar/*.jar
-                        ls -l nginx/html/dist/
                     '''
                 }
             }
@@ -43,29 +47,48 @@ pipeline {
                     passwordVariable: 'HARBOR_PASS'
                 )]) {
                     script {
-                        // 登录 Harbor
-                        sh "docker login ${HARBOR_URL} -u ${HARBOR_USER} -p ${HARBOR_PASS}"
-
-                        // 定义需要构建的服务列表及其 Dockerfile 路径（相对于 docker 目录）
                         def services = [
-                            [name: 'ruoyi-gateway',         dockerfile: 'ruoyi/gateway',         context: 'ruoyi/gateway'],
-                            [name: 'ruoyi-auth',            dockerfile: 'ruoyi/auth',            context: 'ruoyi/auth'],
-                            [name: 'ruoyi-system',          dockerfile: 'ruoyi/modules/system',  context: 'ruoyi/modules/system'],
-                            [name: 'ruoyi-nginx',           dockerfile: 'nginx',                 context: 'nginx']
+                            [name: 'ruoyi-gateway', dockerfile: 'ruoyi/gateway',        context: 'ruoyi/gateway'],
+                            [name: 'ruoyi-auth',    dockerfile: 'ruoyi/auth',           context: 'ruoyi/auth'],
+                            [name: 'ruoyi-system',  dockerfile: 'ruoyi/modules/system', context: 'ruoyi/modules/system'],
+                            [name: 'ruoyi-nginx',   dockerfile: 'nginx',                context: 'nginx']
                         ]
+
+                        sh "docker login ${HARBOR_URL} -u ${HARBOR_USER} -p ${HARBOR_PASS}"
 
                         dir('docker') {
                             for (service in services) {
-		            def imageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:${TAG}"
-			    def latestImageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:latest"
-                            sh """
-                            docker build -t ${imageName} -f ${service.dockerfile}/Dockerfile ${service.context}
-                            docker tag ${imageName} ${latestImageName}
-                            docker push ${imageName}
-                            docker push ${latestImageName}
-                            echo "✅ 已推送镜像: ${imageName} 和 ${latestImageName}"
+                                def imageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:${TAG}"
+                                def latestImageName = "${HARBOR_URL}/${HARBOR_PROJECT}/${service.name}:latest"
+                                sh """
+                                    docker build -t ${imageName} -f ${service.dockerfile}/Dockerfile ${service.context}
+                                    docker tag ${imageName} ${latestImageName}
+                                    docker push ${imageName}
+                                    docker push ${latestImageName}
+                                    echo "✅ 已推送镜像: ${imageName} 和 ${latestImageName}"
                                 """
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('重启k8s微服务') {
+            steps {
+                script {
+                    def services = [
+                        [name: 'ruoyi-gateway',  deployment: 'ruoyi-gateway'],
+                        [name: 'ruoyi-auth',     deployment: 'ruoyi-auth'],
+                        [name: 'ruoyi-system',   deployment: 'ruoyi-modules-system'],
+                        [name: 'ruoyi-nginx',    deployment: 'ruoyi-nginx']
+                    ]
+                    withKubeConfig([credentialsId: 'k8s-kubeconfig']) {
+                        for (service in services) {
+                            sh """
+                                kubectl rollout restart deployment/${service.deployment} -n ruoyi-cloud
+                                kubectl rollout status deployment/${service.deployment} -n ruoyi-cloud
+                            """
                         }
                     }
                 }
@@ -75,7 +98,6 @@ pipeline {
 
     post {
         always {
-            // 清理本地镜像，避免占用磁盘空间（可选）
             sh "docker image prune -f"
         }
     }
