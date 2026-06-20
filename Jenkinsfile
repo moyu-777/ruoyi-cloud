@@ -75,12 +75,17 @@ pipeline {
                             'ruoyi-modules-system',
                             'ruoyi-nginx'
                         ]
-                        sshagent(['k8s-master']) {
+                        withCredentials([sshUserPrivateKey(
+                            credentialsId: 'k8s-master',
+                            keyFileVariable: 'SSH_KEY'
+                        )]) {
                             for (service in services) {
                                 sh """
-                                    ssh -o StrictHostKeyChecking=no guyue@192.168.255.141 \
-                                    'kubectl rollout restart deployment/${service} -n ruoyi-cloud && \
-                                     kubectl rollout status deployment/${service} -n ruoyi-cloud'
+                                    ssh -i ${SSH_KEY} \
+                                        -o StrictHostKeyChecking=no \
+                                        guyue@192.168.255.141 \
+                                        'kubectl rollout restart deployment/${service} -n ruoyi-cloud && \
+                                         kubectl rollout status deployment/${service} -n ruoyi-cloud'
                                 """
                             }
                         }
