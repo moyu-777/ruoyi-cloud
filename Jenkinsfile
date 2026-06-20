@@ -43,7 +43,7 @@ pipeline {
                             [name: 'ruoyi-gateway', dockerfile: 'ruoyi/gateway',        context: 'ruoyi/gateway'],
                             [name: 'ruoyi-auth',    dockerfile: 'ruoyi/auth',           context: 'ruoyi/auth'],
                             [name: 'ruoyi-system',  dockerfile: 'ruoyi/modules/system', context: 'ruoyi/modules/system'],
-                            [name: 'ruoyi-nginx',   dockerfile: 'nginx',                context: 'nginx']
+                            [name: 'ruoyi-nginx',   dockerfile: 'ruoyi-ui',                context: 'ruoyi-ui']
                         ]
 
                         sh "docker login ${HARBOR_URL} -u ${HARBOR_USER} -p ${HARBOR_PASS}"
