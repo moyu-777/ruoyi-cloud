@@ -94,10 +94,11 @@ pipeline {
             }
     }
 
-    post {
-        always {
-            // 只清悬空镜像，保留有 tag 的镜像缓存
-            sh "docker image prune -f --filter 'until=24h'"
+        post {
+            always {
+                node('built-in') {
+                    sh "docker image prune -f"
+                }
+            }
         }
-    }
 }
