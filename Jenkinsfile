@@ -75,14 +75,17 @@ pipeline {
                             'ruoyi-modules-system',
                             'ruoyi-nginx'
                         ]
-                        withCredentials([file(
-                            credentialsId: 'k8s-master',   // 你现有的 kubeconfig 凭据
-                            variable: 'KUBECONFIG'
+                        withCredentials([sshUserPrivateKey(
+                            credentialsId: 'k8s-master',
+                            keyFileVariable: 'SSH_KEY'
                         )]) {
                             for (service in services) {
                                 sh """
-                                    kubectl rollout restart deployment/${service} -n ruoyi-cloud
-                                    kubectl rollout status deployment/${service} -n ruoyi-cloud
+                                    ssh -i \$SSH_KEY \
+                                        -o StrictHostKeyChecking=no \
+                                        guyue@192.168.255.141 \
+                                        'kubectl rollout restart deployment/${service} -n ruoyi-cloud && \
+                                         kubectl rollout status deployment/${service} -n ruoyi-cloud'
                                 """
                             }
                         }
