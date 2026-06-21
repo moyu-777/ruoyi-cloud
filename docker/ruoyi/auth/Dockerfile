@@ -1,5 +1,5 @@
 # 基础镜像
-FROM  openjdk:17
+FROM eclipse-temurin:17-jre
 # author
 MAINTAINER ruoyi
 
