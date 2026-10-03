@@ -33,7 +33,7 @@ pipeline {
 
         string(name: 'HARBOR_URL',     defaultValue: '192.168.203.120:80')
         string(name: 'HARBOR_PROJECT', defaultValue: 'ruoyi-cloud')
-        string(name: 'HARBOR_CRED',    defaultValue: 'harbor-auth')
+        string(name: 'HARBOR_CRED',    defaultValue: 'harbor-passport')
 
         string(name: 'KUBE_NAMESPACE', defaultValue: 'ruoyi-cloud')
         booleanParam(name: 'DO_DEPLOY', defaultValue: true)
