@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         // ★ 换成你的真实仓库地址（必须 SSH，HTTPS 在这套网络不通）
-        string(name: 'GIT_URL',        defaultValue: 'git@github.com/moyu-777/RuoYi-Cloud.git')
+        string(name: 'GIT_URL',        defaultValue: 'git@github.com/moyu-777/ruoyi-cloud.git')
         string(name: 'GIT_BRANCH',     defaultValue: '*/master')
         string(name: 'GIT_CRED',       defaultValue: 'github-pvt')
 
